@@ -1,0 +1,24 @@
+#+title: LaTeXOCR
+
+* Задача
+Распознавание символов LaTeX с помощью машинного обучения.
+
+В первую очередь для личного использования, для перевода в LaTeX книг, статей и т.д., которые написаны не в LaTeX. В
+частности, просканированных книг.
+* План работы
+1. Поиск тренировочных данных
+
+   Используются датасеты
+   1. Pearson. (2020, August). Aida Calculus Math Handwriting Recognition Dataset. Retrieved 12.01.2024 from https://www.kaggle.com/aidapearson/ocr-data.
+
+   2. fedesoriano. (October 2021). HASYv2 - Symbol Recognizer. Retrieved 12.01.2024 from https://www.kaggle.com/fedesoriano/hasyv2-symbol-recognizer.
+
+2. Предобработка и нормализация данных, разделение на тренировочную и тестовую выборки
+
+3. Обучение модели
+
+4. Анализ достоверности на данных из тестовой выборки
+
+Изначально будет сделана тестовая модель для более простого датасета на более простой задаче (распознавание арабских цифр и латинского
+алфавита, датасеты MNIST 0-9 и Kaggle A-Z based on NIST Special Database 19) в качестве практики
+
