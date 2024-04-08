@@ -22,3 +22,109 @@
 Изначально будет сделана тестовая модель для более простого датасета на более простой задаче (распознавание арабских цифр и латинского
 алфавита, датасеты MNIST 0-9 и Kaggle A-Z based on NIST Special Database 19) в качестве практики
 
+* Код
+** Загрузка датасетов
+По отдельной функции на каждый датасет, поскольку форматы могут различаться.
+
+#+begin_src python :tangle data_io.py
+from tensorflow.keras.datasets import mnist
+import numpy as np
+
+dataset_dir = "/home/wumi/ML datasets/LaTeX OCR/"
+
+def load_az_dataset(datasetPath):
+    data = []
+    labels = []
+
+    for row in open(dataset_dir + datasetPath):
+        row = row.split(",")
+        label = int(row[0])
+        image = np.array([int(x) for x in row[1:]], dtype="uint8")
+
+        # reshape to same format as mnist
+        image = image.reshape((28,28))
+
+        data.append(image)
+        labels.append(label)
+    data = np.array(data, dtype="float32")
+    labels = np.array(labels, dtype="int")
+
+    return (data,labels)
+
+def load_mnist_dataset():
+    ((trainData, trainLabels), (testData, testLabels)) = mnist.load_data()
+    # training and testing will be split later
+    data = np.vstack([trainData, testData])
+    labels = np.hstack([trainLabels, testLabels])
+
+    return (data,labels)
+#+end_src
+** Обучение
+Импорты
+#+begin_src python :tangle train.py
+from data_io import load_mnist_dataset
+from data_io import load_az_dataset
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import Input
+from sklearn.preprocessing import LabelBinarizer
+from sklearn.model_selection import train_test_split
+import numpy as np
+#+end_src
+
+Препроцессинг выборок
+#+begin_src python :tangle train.py
+az_name = "Kaggle A-Z.csv"
+
+print("[INFO] loading datasets...")
+(azData, azLabels) = load_az_dataset(az_name)
+(digitsData, digitsLabels) = load_mnist_dataset()
+
+print("[INFO] preparing datasets...")
+# label collision removal and unification
+azLabels += 10
+data = np.vstack([azData, digitsData])
+labels = np.hstack([azLabels, digitsLabels])
+data = np.array(data, dtype="float32")
+# уплощаем обратно и нормализуем интенсивность в [0,1]
+num_pixels = data.shape[1]*data.shape[2]
+data = data.reshape((data.shape[0], num_pixels))
+data /= 255.0
+num_classes = 36
+#+end_src
+
+Конвертирование разметки в унитарный код, нормализация весов классов и разделение выборки на тренировочную и тестовую части
+#+begin_src python :tangle train.py
+# one-hot encoding
+le = LabelBinarizer()
+labels = le.fit_transform(labels)
+counts = labels.sum(axis=0)
+
+classTotals = labels.sum(axis=0)
+classWeight = {}
+# loop over all classes and calculate the class weight
+for i in range(0, len(classTotals)):
+	classWeight[i] = classTotals.max() / classTotals[i]
+
+# partition the data into training and testing splits using 80% of
+# the data for training and the remaining 20% for testing
+(trainX, testX, trainY, testY) = train_test_split(data, labels, test_size=0.20, stratify=labels, random_state=42)
+#+end_src
+
+#+begin_src python :tangle train.py
+def alnum_model():
+    model = Sequential()
+    model.add(Input((num_pixels,)))
+    model.add(Dense(num_pixels, kernel_initializer='normal', activation='relu'))
+    model.add(Dense(num_classes, kernel_initializer='normal', activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    return model
+
+print("[INFO] training...")
+model = alnum_model()
+model.fit(trainX,trainY,validation_data=(testX,testY),epochs=30, batch_size=200, verbose=2)
+
+scores = model.evaluate(testX,testY, verbose=0)
+print("alnum error: %.2f%%" % (100-scores[1]*100))
+#+end_src
